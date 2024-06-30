@@ -3428,3 +3428,1226 @@ $app->run();
 ```
 
 Seguire le best practices per la creazione di API RESTful non solo rende la tua API più robusta e sicura, ma migliora anche l'esperienza degli sviluppatori che la utilizzano. Leaf PHP offre gli strumenti necessari per implementare queste pratiche in modo efficace, consentendoti di costruire API ben progettate e facilmente mantenibili.
+
+### Testing delle Rotte e delle Funzioni in Leaf PHP con PHPUnit
+
+Il testing è una parte cruciale dello sviluppo di qualsiasi applicazione, inclusa la creazione di API RESTful. PHPUnit è uno dei framework di testing più utilizzati in PHP. In questo tutorial, vedremo come testare le rotte e le funzioni di un'applicazione Leaf PHP utilizzando PHPUnit.
+
+### Prerequisiti
+
+1. Assicurati di avere Composer installato.
+2. Aggiungi PHPUnit come dipendenza al tuo progetto:
+
+```bash
+composer require --dev phpunit/phpunit
+```
+
+### Configurazione di PHPUnit
+
+Crea un file `phpunit.xml` nella root del tuo progetto per configurare PHPUnit:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/bootstrap.php" colors="true">
+    <testsuites>
+        <testsuite name="Leaf App Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
+```
+
+### Configurazione Bootstrap
+
+Crea un file `bootstrap.php` nella directory `tests` per configurare l'ambiente di test:
+
+```php
+<?php
+
+require __DIR__ . '/../vendor/autoload.php';
+
+// Carica le variabili di ambiente
+Leaf\Config::loadEnv();
+
+// Configura il database per i test
+Leaf\Db::connect([
+    'driver' => getenv('DB_CONNECTION'),
+    'host' => getenv('DB_HOST'),
+    'port' => getenv('DB_PORT'),
+    'database' => getenv('DB_DATABASE'),
+    'username' => getenv('DB_USERNAME'),
+    'password' => getenv('DB_PASSWORD'),
+    'charset' => 'utf8mb4',
+    'collation' => 'utf8mb4_unicode_ci',
+    'prefix' => '',
+]);
+
+// Configura l'applicazione Leaf
+$app = new Leaf\App();
+require __DIR__ . '/../config/database.php';
+require __DIR__ . '/../public/index.php';
+
+return $app;
+```
+
+### Creazione dei Test
+
+Crea una directory `tests` nella root del tuo progetto. In questa directory, creeremo i test per la nostra applicazione Leaf PHP.
+
+#### Test delle Rotte
+
+Crea un file `BookControllerTest.php` nella directory `tests`:
+
+```php
+<?php
+
+use PHPUnit\Framework\TestCase;
+use Leaf\Http\Request;
+use Leaf\Http\Response;
+use Leaf\App;
+
+class BookControllerTest extends TestCase
+{
+    protected $app;
+
+    protected function setUp(): void
+    {
+        $this->app = require __DIR__ . '/../tests/bootstrap.php';
+    }
+
+    public function testGetAllBooks()
+    {
+        $response = $this->app->get('/v1/books');
+        $this->assertEquals(200, $response->status());
+        $this->assertIsArray($response->body());
+    }
+
+    public function testCreateBook()
+    {
+        $bookData = [
+            'title' => 'Test Book',
+            'author' => 'John Doe',
+            'published_date' => '2024-01-01',
+            'isbn' => '1234567890123'
+        ];
+
+        $response = $this->app->post('/v1/books', $bookData);
+        $this->assertEquals(201, $response->status());
+        $this->assertArrayHasKey('id', $response->body());
+    }
+
+    public function testGetSingleBook()
+    {
+        $response = $this->app->get('/v1/books/1');
+        $this->assertEquals(200, $response->status());
+        $this->assertArrayHasKey('id', $response->body());
+    }
+
+    public function testUpdateBook()
+    {
+        $bookData = [
+            'title' => 'Updated Test Book',
+            'author' => 'Jane Doe',
+            'published_date' => '2024-02-01',
+            'isbn' => '9876543210987'
+        ];
+
+        $response = $this->app->put('/v1/books/1', $bookData);
+        $this->assertEquals(200, $response->status());
+        $this->assertEquals('Updated Test Book', $response->body()['title']);
+    }
+
+    public function testDeleteBook()
+    {
+        $response = $this->app->delete('/v1/books/1');
+        $this->assertEquals(200, $response->status());
+        $this->assertEquals(['message' => 'Book deleted successfully'], $response->body());
+    }
+}
+```
+
+### Esecuzione dei Test
+
+Esegui i test utilizzando il comando PHPUnit:
+
+```bash
+vendor/bin/phpunit
+```
+
+### Test delle Funzioni
+
+Per testare funzioni specifiche, come i metodi del modello `Book`, crea un file `BookModelTest.php` nella directory `tests`:
+
+```php
+<?php
+
+use PHPUnit\Framework\TestCase;
+use App\Models\Book;
+
+class BookModelTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        $this->app = require __DIR__ . '/../tests/bootstrap.php';
+    }
+
+    public function testCreateBook()
+    {
+        $bookData = [
+            'title' => 'Test Book',
+            'author' => 'John Doe',
+            'published_date' => '2024-01-01',
+            'isbn' => '1234567890123'
+        ];
+
+        $book = Book::createBook($bookData);
+        $this->assertArrayHasKey('id', $book);
+    }
+
+    public function testGetAllBooks()
+    {
+        $books = Book::getAllBooks();
+        $this->assertIsArray($books);
+    }
+
+    public function testGetBookById()
+    {
+        $book = Book::getBookById(1);
+        $this->assertEquals(1, $book['id']);
+    }
+
+    public function testUpdateBook()
+    {
+        $bookData = [
+            'title' => 'Updated Test Book',
+            'author' => 'Jane Doe',
+            'published_date' => '2024-02-01',
+            'isbn' => '9876543210987'
+        ];
+
+        $book = Book::updateBook(1, $bookData);
+        $this->assertEquals('Updated Test Book', $book['title']);
+    }
+
+    public function testDeleteBook()
+    {
+        $deleted = Book::deleteBook(1);
+        $this->assertTrue($deleted);
+    }
+}
+```
+
+Testing è una parte essenziale dello sviluppo di API per garantire che le funzionalità siano corrette e stabili. PHPUnit, combinato con Leaf PHP, offre un ambiente di test potente e flessibile che ti consente di testare facilmente le tue rotte e funzioni. Seguendo questo tutorial, puoi impostare una suite di test completa per la tua applicazione Leaf PHP, assicurandoti che ogni parte del tuo codice funzioni come previsto.
+
+### Test-Driven Development (TDD) con Leaf PHP
+
+Test-Driven Development (TDD) è una pratica di sviluppo software che consiste nel scrivere i test prima del codice effettivo. L'idea è di creare test che definiscano e verificano il comportamento desiderato delle funzionalità prima ancora che queste vengano implementate. In questo modo, il codice viene scritto per soddisfare i test, garantendo un'alta copertura e un design orientato ai test.
+
+Ecco una guida dettagliata su come utilizzare TDD con Leaf PHP.
+
+### Passi per il TDD
+
+1. **Scrivere un test che fallisce**: Scrivi un test per una funzionalità che non è ancora implementata.
+2. **Implementare la funzionalità**: Scrivi il codice minimo necessario per far passare il test.
+3. **Refactor**: Migliora il codice mantenendo i test verdi.
+
+### Prerequisiti
+
+- Assicurati di avere Composer installato.
+- Installa PHPUnit:
+
+```bash
+composer require --dev phpunit/phpunit
+```
+
+### Configurazione di PHPUnit
+
+Crea un file `phpunit.xml` nella root del tuo progetto:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/bootstrap.php" colors="true">
+    <testsuites>
+        <testsuite name="Leaf App Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
+```
+
+### Configurazione Bootstrap
+
+Crea un file `bootstrap.php` nella directory `tests`:
+
+```php
+<?php
+
+require __DIR__ . '/../vendor/autoload.php';
+
+// Configura l'applicazione Leaf
+$app = new Leaf\App();
+require __DIR__ . '/../config/database.php';
+require __DIR__ . '/../public/index.php';
+
+return $app;
+```
+
+### Esempio di Implementazione TDD
+
+Supponiamo di voler implementare un endpoint per creare un libro (`POST /books`).
+
+#### Passo 1: Scrivere un Test che Fallisce
+
+Crea un file `BookControllerTest.php` nella directory `tests`:
+
+```php
+<?php
+
+use PHPUnit\Framework\TestCase;
+use Leaf\Http\Request;
+use Leaf\Http\Response;
+use Leaf\App;
+
+class BookControllerTest extends TestCase
+{
+    protected $app;
+
+    protected function setUp(): void
+    {
+        $this->app = require __DIR__ . '/../tests/bootstrap.php';
+    }
+
+    public function testCreateBook()
+    {
+        $bookData = [
+            'title' => 'Test Book',
+            'author' => 'John Doe',
+            'published_date' => '2024-01-01',
+            'isbn' => '1234567890123'
+        ];
+
+        $response = $this->app->post('/books', $bookData);
+        $this->assertEquals(201, $response->status());
+        $this->assertArrayHasKey('id', $response->body());
+    }
+}
+```
+
+Esegui il test utilizzando PHPUnit:
+
+```bash
+vendor/bin/phpunit --filter testCreateBook
+```
+
+Il test fallirà perché non abbiamo ancora implementato l'endpoint.
+
+#### Passo 2: Implementare la Funzionalità
+
+Implementa l'endpoint nel controller dei libri. Crea un file `BookController.php`:
+
+```php
+<?php
+
+namespace App\Controllers;
+
+use Leaf\Http\Request;
+use Leaf\Http\Response;
+use App\Models\Book;
+
+class BookController
+{
+    public function store()
+    {
+        $data = Request::get(['title', 'author', 'published_date', 'isbn']);
+        
+        // Supponiamo che il modello Book gestisca la creazione del libro
+        $book = Book::create($data);
+        
+        Response::json($book, 201);
+    }
+}
+```
+
+Aggiorna il file delle rotte (`routes.php`):
+
+```php
+$app->post('/books', 'App\Controllers\BookController@store');
+```
+
+Esegui nuovamente il test:
+
+```bash
+vendor/bin/phpunit --filter testCreateBook
+```
+
+Il test dovrebbe passare ora.
+
+#### Passo 3: Refactor
+
+Ottimizza il codice mantenendo i test verdi. Ad esempio, puoi migliorare la gestione degli errori o la struttura dei dati.
+
+### Implementazione dei Modelli e Test delle Funzioni
+
+Crea il modello `Book.php` nella directory `models`:
+
+```php
+<?php
+
+namespace App\Models;
+
+use Leaf\Model;
+
+class Book extends Model
+{
+    protected $table = 'books';
+
+    public static function create($data)
+    {
+        // Inserisce il libro nel database
+        $id = self::insert($data);
+        return self::find($id);
+    }
+}
+```
+
+Aggiungi un test per il modello:
+
+```php
+<?php
+
+use PHPUnit\Framework\TestCase;
+use App\Models\Book;
+
+class BookModelTest extends TestCase
+{
+    protected function setUp(): void
+    {
+        $this->app = require __DIR__ . '/../tests/bootstrap.php';
+    }
+
+    public function testCreateBook()
+    {
+        $bookData = [
+            'title' => 'Test Book',
+            'author' => 'John Doe',
+            'published_date' => '2024-01-01',
+            'isbn' => '1234567890123'
+        ];
+
+        $book = Book::create($bookData);
+        $this->assertArrayHasKey('id', $book);
+    }
+}
+```
+
+Esegui i test:
+
+```bash
+vendor/bin/phpunit
+```
+
+Il TDD è una metodologia potente che può migliorare la qualità del tuo codice e la sua manutenibilità. Utilizzando PHPUnit e Leaf PHP, puoi implementare facilmente TDD nel tuo flusso di lavoro, assicurandoti che ogni parte del tuo codice sia coperta dai test e funzioni come previsto.
+
+### Cos'è PSR-4?
+
+PSR-4 è uno standard di autoloading definito dal PHP-FIG (PHP Framework Interoperability Group). È uno dei diversi standard PSR (PHP Standard Recommendation) creati per migliorare l'interoperabilità tra le librerie e i framework PHP. PSR-4 specifica come le classi dovrebbero essere autocaricate (autoloaded) utilizzando un mapping tra i namespace e le strutture delle directory.
+
+### Scopo di PSR-4
+
+L'obiettivo principale di PSR-4 è quello di fornire un metodo standard per autocaricare le classi in PHP, senza dover includere manualmente ogni file PHP che contiene una classe.
+
+### Come Funziona PSR-4
+
+PSR-4 definisce un mapping tra un namespace e una directory. Quando una classe viene richiesta, l'autoloader di PSR-4 cerca di risolvere il percorso del file in base al namespace della classe.
+
+#### Struttura di Base
+
+1. **Namespace Root**: La radice del namespace viene mappata a una directory specifica.
+2. **Namespace Subdirectories**: Ogni sottospazio dei nomi (subnamespace) viene mappato a una sottodirectory.
+3. **Class Name**: Il nome della classe viene mappato a un file con lo stesso nome.
+
+#### Esempio di Mapping
+
+Supponiamo di avere la seguente struttura di directory e namespace:
+
+```
+src/
+├── Controllers/
+│   └── HomeController.php
+├── Models/
+│   └── User.php
+```
+
+Con le seguenti classi:
+
+```php
+// src/Controllers/HomeController.php
+namespace App\Controllers;
+
+class HomeController {
+    // ...
+}
+
+// src/Models/User.php
+namespace App\Models;
+
+class User {
+    // ...
+}
+```
+
+### Configurazione di PSR-4 in Composer
+
+Per configurare l'autoloading PSR-4 con Composer, devi aggiornare il tuo file `composer.json` come segue:
+
+```json
+{
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    }
+}
+```
+
+Dopo aver aggiornato `composer.json`, esegui il comando:
+
+```bash
+composer dump-autoload
+```
+
+Questo comando aggiorna i file di autoloading di Composer, permettendo a PHP di caricare automaticamente le classi utilizzando lo standard PSR-4.
+
+### Esempio di Utilizzo
+
+Con la configurazione di cui sopra, puoi usare le tue classi in modo semplice senza doverle includere manualmente:
+
+```php
+// In un file qualsiasi, ad esempio index.php
+require 'vendor/autoload.php';
+
+use App\Controllers\HomeController;
+use App\Models\User;
+
+$controller = new HomeController();
+$user = new User();
+```
+
+### Vantaggi di PSR-4
+
+1. **Standardizzazione**: Fornisce un modo standard per autocaricare le classi, migliorando l'interoperabilità tra librerie e framework diversi.
+2. **Organizzazione**: Incoraggia una struttura organizzata delle directory basata sui namespace.
+3. **Efficienza**: Riduce la necessità di includere manualmente i file, migliorando l'efficienza dello sviluppo.
+4. **Manutenibilità**: Facilita la gestione e la manutenzione del codice, rendendo più semplice navigare e comprendere la struttura del progetto.
+
+PSR-4 è uno standard essenziale per l'autoloading delle classi in PHP, che semplifica notevolmente lo sviluppo e la gestione dei progetti PHP. Adottando PSR-4, gli sviluppatori possono beneficiare di un metodo coerente e standardizzato per organizzare e caricare automaticamente le loro classi, migliorando l'interoperabilità e la manutenibilità del codice.
+
+Il file `composer.json` è un file di configurazione utilizzato dal gestore di pacchetti Composer per PHP. Serve per definire le dipendenze del tuo progetto e altre informazioni di configurazione. Ecco alcune delle sue funzioni principali:
+
+### Funzioni di `composer.json`
+
+1. **Gestione delle Dipendenze**: Specifica le librerie e i pacchetti di cui il tuo progetto ha bisogno. Composer scarica e installa automaticamente queste dipendenze e le loro dipendenze ricorsive.
+
+2. **Autoloading**: Configura l'autoloading per caricare automaticamente le classi del tuo progetto senza doverle richiamare manualmente.
+
+3. **Metadati del Progetto**: Contiene informazioni sul progetto come il nome, la descrizione, la versione, l'autore, la licenza e altri metadati utili.
+
+4. **Script**: Definisce script che possono essere eseguiti con comandi specifici di Composer, come l'installazione delle dipendenze, la pulizia della cache, ecc.
+
+5. **Configurazione**: Imposta parametri di configurazione per Composer, come repository personalizzati, configurazioni di autoload, e altro.
+
+### Esempio di `composer.json`
+
+Ecco un esempio di file `composer.json` per un progetto PHP:
+
+```json
+{
+    "name": "nome/progetto",
+    "description": "Una breve descrizione del progetto",
+    "type": "project",
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "leafs/leaf": "^3.0",
+        "leafs/db": "^1.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "@php artisan key:generate"
+        ],
+        "test": "phpunit"
+    },
+    "authors": [
+        {
+            "name": "Tuo Nome",
+            "email": "tuo.email@example.com"
+        }
+    ],
+    "license": "MIT"
+}
+```
+
+### Dettagli delle Sezioni
+
+- **name**: Nome del progetto, solitamente in formato `vendor/package`.
+- **description**: Breve descrizione del progetto.
+- **type**: Tipo di pacchetto. Può essere `library`, `project`, `metapackage`, ecc.
+- **require**: Lista delle dipendenze necessarie per il progetto. Ogni voce contiene il nome del pacchetto e la versione richiesta.
+- **require-dev**: Dipendenze necessarie solo per lo sviluppo, come strumenti di test.
+- **autoload**: Configura l'autoloading per caricare automaticamente le classi. In questo esempio, si utilizza lo standard PSR-4.
+- **autoload-dev**: Configura l'autoloading per le classi di sviluppo/test.
+- **scripts**: Script che possono essere eseguiti con Composer. Ad esempio, `composer test` eseguirà PHPUnit.
+- **authors**: Informazioni sugli autori del progetto.
+- **license**: Licenza del progetto.
+
+### Utilizzo di Composer
+
+- **Installare le dipendenze**: Una volta configurato `composer.json`, puoi installare le dipendenze eseguendo:
+
+  ```bash
+  composer install
+  ```
+
+- **Aggiungere una dipendenza**: Per aggiungere una nuova dipendenza al progetto:
+
+  ```bash
+  composer require nome/pacchetto
+  ```
+
+- **Eseguire script**: Per eseguire uno script definito nel file `composer.json`:
+
+  ```bash
+  composer run-script nome_script
+  ```
+
+Il file `composer.json` è essenziale per la gestione delle dipendenze e l'automazione delle configurazioni nei progetti PHP, rendendo lo sviluppo più organizzato ed efficiente.
+
+
+# Hello World
+
+Per creare un progetto Leaf PHP da shell, segui questi passaggi:
+
+### Prerequisiti
+
+1. **PHP**: Assicurati di avere PHP installato sul tuo sistema.
+2. **Composer**: Assicurati di avere Composer installato. Puoi installarlo seguendo le istruzioni sul sito ufficiale di [Composer](https://getcomposer.org/).
+
+### Passaggi per Creare un Progetto Leaf PHP
+
+1. **Apri il Terminale**: Apri il terminale o il prompt dei comandi.
+
+2. **Crea una Cartella per il Progetto**: Spostati nella directory dove vuoi creare il progetto e crea una nuova cartella per il tuo progetto.
+
+   ```bash
+   mkdir my-leaf-project
+   cd my-leaf-project
+   ```
+
+3. **Inizializza un Nuovo Progetto Composer**: Esegui il comando seguente per inizializzare un nuovo progetto Composer.
+
+   ```bash
+   composer init
+   ```
+
+   Questo comando ti guiderà attraverso una serie di prompt per configurare il tuo file `composer.json`. Puoi accettare i valori predefiniti o specificare le tue preferenze.
+
+4. **Aggiungi Leaf PHP come Dipendenza**: Una volta completata l'inizializzazione, aggiungi Leaf PHP come dipendenza del tuo progetto.
+
+   ```bash
+   composer require leafs/leaf
+   ```
+
+5. **Crea la Struttura delle Directory**: Crea la struttura delle directory del tuo progetto.
+
+   ```bash
+   mkdir -p public src
+   touch public/index.php
+   ```
+
+6. **Configura l'Autoloading**: Aggiorna il file `composer.json` per configurare l'autoloading PSR-4.
+
+   ```json
+   {
+       "autoload": {
+           "psr-4": {
+               "App\\": "src/"
+           }
+       }
+   }
+   ```
+
+   Dopo aver aggiornato `composer.json`, esegui:
+
+   ```bash
+   composer dump-autoload
+   ```
+
+7. **Crea un File di Ingresso (index.php)**: Apri `public/index.php` e aggiungi il seguente codice per iniziare a configurare la tua applicazione Leaf PHP.
+
+   ```php
+   <?php
+
+   require __DIR__ . '/../vendor/autoload.php';
+
+   use Leaf\App;
+
+   $app = new App();
+
+   $app->get('/', function() {
+       echo "Hello, Leaf!";
+   });
+
+   $app->run();
+   ```
+
+8. **Esegui il Server**: Esegui il server integrato di PHP per vedere la tua applicazione in azione.
+
+   ```bash
+   php -S localhost:8000 -t public
+   ```
+
+### Dettagli del Codice
+
+- **Autoloading**: La configurazione `psr-4` nel file `composer.json` permette a Composer di autocaricare le classi presenti nella directory `src` usando il namespace `App`.
+
+- **File di Ingresso (index.php)**: Questo file serve come punto di ingresso per la tua applicazione Leaf PHP. Include l'autoloader di Composer, crea un'istanza dell'applicazione Leaf, definisce una rotta e avvia l'applicazione.
+
+### Struttura Finale del Progetto
+
+La struttura del progetto dovrebbe apparire simile a questa:
+
+```
+my-leaf-project/
+├── public/
+│   └── index.php
+├── src/
+├── vendor/
+├── composer.json
+└── composer.lock
+```
+
+### Test dell'Applicazione
+
+Apri il browser e vai su `http://localhost:8000`. Dovresti vedere il messaggio "Hello, Leaf!".
+
+### Conclusione
+
+Hai creato con successo un progetto Leaf PHP utilizzando la shell. Ora puoi iniziare a sviluppare la tua applicazione aggiungendo rotte, controller, modelli e altre funzionalità necessarie.
+
+### Creare un Servizio di Accorciamento degli URL con Leaf PHP e SQLite3
+
+In questo tutorial, creeremo un semplice servizio di accorciamento degli URL utilizzando Leaf PHP e un database SQLite3. Il servizio permetterà agli utenti di inserire un URL lungo e ottenere un URL corto, che reindirizzerà all'URL originale.
+
+### Prerequisiti
+
+- PHP e Composer installati.
+- SQLite3 installato.
+
+### Struttura del Progetto
+
+Ecco come struttureremo il progetto:
+
+```
+url-shortener/
+├── config/
+│   └── database.php
+├── public/
+│   └── index.php
+├── src/
+│   └── Controllers/
+│       └── UrlController.php
+│   └── Models/
+│       └── Url.php
+├── tests/
+│   └── UrlShortenerTest.php
+├── vendor/
+├── .env
+├── composer.json
+└── phpunit.xml
+```
+
+### Passo 1: Impostare il Progetto
+
+1. **Crea il progetto e inizializza Composer**
+
+```bash
+mkdir url-shortener
+cd url-shortener
+composer init
+```
+
+Aggiungi `leafs/leaf` come dipendenza:
+
+```bash
+composer require leafs/leaf
+```
+
+2. **Configura il database**
+
+Crea un file `config/database.php`:
+
+```php
+<?php
+
+use Leaf\Db;
+
+Db::config('sqlite', [
+    'database' => __DIR__ . '/../database.sqlite',
+]);
+```
+
+3. **Imposta l'ambiente**
+
+Crea un file `.env`:
+
+```env
+DB_CONNECTION=sqlite
+DB_DATABASE=database.sqlite
+```
+
+4. **Configura l'autoloading**
+
+Aggiorna `composer.json`:
+
+```json
+"autoload": {
+    "psr-4": {
+        "App\\": "src/"
+    }
+}
+```
+
+Esegui:
+
+```bash
+composer dump-autoload
+```
+
+### Passo 2: Creare il Database
+
+Crea il file `database.sqlite` nella root del progetto e una tabella `urls`:
+
+```sql
+CREATE TABLE urls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    long_url TEXT NOT NULL,
+    short_code TEXT NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Passo 3: Creare i Modelli
+
+Crea un file `src/Models/Url.php`:
+
+```php
+<?php
+
+namespace App\Models;
+
+use Leaf\Model;
+
+class Url extends Model
+{
+    protected $table = 'urls';
+
+    public static function createShortUrl($longUrl)
+    {
+        $shortCode = self::generateShortCode();
+        self::insert([
+            'long_url' => $longUrl,
+            'short_code' => $shortCode,
+        ]);
+
+        return $shortCode;
+    }
+
+    public static function getLongUrl($shortCode)
+    {
+        $result = self::where('short_code', $shortCode)->first();
+        return $result ? $result['long_url'] : null;
+    }
+
+    private static function generateShortCode($length = 6)
+    {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $charactersLength = strlen($characters);
+        $shortCode = '';
+        for ($i = 0; $i < $length; $i++) {
+            $shortCode .= $characters[rand(0, $charactersLength - 1)];
+        }
+        return $shortCode;
+    }
+}
+```
+
+### Passo 4: Creare i Controller
+
+Crea un file `src/Controllers/UrlController.php`:
+
+```php
+<?php
+
+namespace App\Controllers;
+
+use Leaf\Http\Request;
+use Leaf\Http\Response;
+use App\Models\Url;
+
+class UrlController
+{
+    public function shorten()
+    {
+        $longUrl = Request::get('url');
+        if (!$longUrl) {
+            Response::json(['error' => 'URL is required'], 400);
+            return;
+        }
+
+        $shortCode = Url::createShortUrl($longUrl);
+        $shortUrl = Request::baseUrl() . '/' . $shortCode;
+
+        Response::json(['short_url' => $shortUrl], 201);
+    }
+
+    public function redirect($shortCode)
+    {
+        $longUrl = Url::getLongUrl($shortCode);
+        if ($longUrl) {
+            Response::redirect($longUrl);
+        } else {
+            Response::json(['error' => 'URL not found'], 404);
+        }
+    }
+}
+```
+
+### Passo 5: Configurare le Rotte
+
+Crea un file `public/index.php`:
+
+```php
+<?php
+
+require __DIR__ . '/../vendor/autoload.php';
+
+use Leaf\App;
+use Leaf\Http\Response;
+use App\Controllers\UrlController;
+
+$app = new App();
+Leaf\Config::loadEnv(__DIR__ . '/../.env');
+require __DIR__ . '/../config/database.php';
+
+$app->post('/shorten', [UrlController::class, 'shorten']);
+$app->get('/{shortCode}', [UrlController::class, 'redirect']);
+
+$app->run();
+```
+
+### Passo 6: Esecuzione e Test dell'Applicazione
+
+Esegui il server:
+
+```bash
+php -S localhost:8000 -t public
+```
+
+Ora puoi testare l'applicazione:
+
+- Per accorciare un URL:
+
+```bash
+curl -X POST -d "url=https://www.example.com" http://localhost:8000/shorten
+```
+
+- Per essere reindirizzati utilizzando l'URL accorciato:
+
+Apri nel browser l'URL corto fornito nella risposta precedente.
+
+### Test con PHPUnit
+
+Crea un file `phpunit.xml`:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit bootstrap="tests/bootstrap.php" colors="true">
+    <testsuites>
+        <testsuite name="Leaf App Test Suite">
+            <directory>tests</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>
+```
+
+Crea un file `tests/UrlShortenerTest.php`:
+
+```php
+<?php
+
+use PHPUnit\Framework\TestCase;
+use Leaf\App;
+
+class UrlShortenerTest extends TestCase
+{
+    protected $app;
+
+    protected function setUp(): void
+    {
+        $this->app = require __DIR__ . '/../tests/bootstrap.php';
+    }
+
+    public function testShortenUrl()
+    {
+        $response = $this->app->post('/shorten', ['url' => 'https://www.example.com']);
+        $this->assertEquals(201, $response->status());
+        $this->assertArrayHasKey('short_url', $response->body());
+    }
+
+    public function testRedirect()
+    {
+        $shortCode = 'abc123';
+        $longUrl = 'https://www.example.com';
+        
+        $this->app->post('/shorten', ['url' => $longUrl]);
+        
+        $response = $this->app->get('/' . $shortCode);
+        $this->assertEquals(200, $response->status());
+    }
+}
+```
+
+Abbiamo creato un semplice servizio di accorciamento degli URL utilizzando Leaf PHP e SQLite3. Abbiamo configurato il database, creato i modelli e i controller, e definito le rotte. Abbiamo inoltre configurato PHPUnit per testare il nostro servizio. Questo esempio può essere esteso ulteriormente aggiungendo autenticazione, limitazioni di utilizzo, e altre funzionalità avanzate.
+
+L'algoritmo che ho scelto per creare URL corte è un metodo semplice e comune basato sulla generazione di un codice casuale. Questo approccio è facile da implementare e funziona bene per la maggior parte dei casi d'uso. Ecco una spiegazione dettagliata dell'algoritmo:
+
+### Algoritmo per Creare URL Corte
+
+1. **Generazione di un Codice Casuale**:
+   - Utilizziamo un set di caratteri che include numeri, lettere maiuscole e minuscole.
+   - Il codice casuale viene generato scegliendo casualmente caratteri dal set di caratteri.
+   - La lunghezza del codice può essere configurata (in questo caso, è di 6 caratteri).
+
+2. **Verifica dell'Unicità**:
+   - Dopo aver generato un codice casuale, si verifica se esiste già nel database.
+   - Se il codice esiste già, si genera un nuovo codice e si ripete il processo finché non si trova un codice unico.
+
+3. **Salvataggio nel Database**:
+   - Una volta generato un codice unico, si salva il codice insieme all'URL lungo nel database.
+
+### Dettagli del Codice
+
+Ecco il codice completo per il modello `Url` che implementa questo algoritmo:
+
+```php
+<?php
+
+namespace App\Models;
+
+use Leaf\Model;
+
+class Url extends Model
+{
+    protected $table = 'urls';
+
+    public static function createShortUrl($longUrl)
+    {
+        $shortCode = self::generateUniqueShortCode();
+        self::insert([
+            'long_url' => $longUrl,
+            'short_code' => $shortCode,
+        ]);
+
+        return $shortCode;
+    }
+
+    public static function getLongUrl($shortCode)
+    {
+        $result = self::where('short_code', $shortCode)->first();
+        return $result ? $result['long_url'] : null;
+    }
+
+    private static function generateUniqueShortCode($length = 6)
+    {
+        do {
+            $shortCode = self::generateShortCode($length);
+        } while (self::shortCodeExists($shortCode));
+        
+        return $shortCode;
+    }
+
+    private static function generateShortCode($length = 6)
+    {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $charactersLength = strlen($characters);
+        $shortCode = '';
+        for ($i = 0; $i < $length; $i++) {
+            $shortCode .= $characters[rand(0, $charactersLength - 1)];
+        }
+        return $shortCode;
+    }
+
+    private static function shortCodeExists($shortCode)
+    {
+        return self::where('short_code', $shortCode)->exists();
+    }
+}
+```
+
+### Passaggi dell'Algoritmo
+
+1. **Metodo `createShortUrl`**:
+   - Riceve l'URL lungo come parametro.
+   - Genera un codice breve unico utilizzando il metodo `generateUniqueShortCode`.
+   - Inserisce l'URL lungo e il codice breve nel database.
+   - Ritorna il codice breve.
+
+2. **Metodo `generateUniqueShortCode`**:
+   - Utilizza un ciclo `do-while` per generare e verificare l'unicità del codice.
+   - Chiama il metodo `generateShortCode` per creare un nuovo codice.
+   - Verifica l'unicità del codice utilizzando il metodo `shortCodeExists`.
+   - Ripete il processo finché non viene trovato un codice unico.
+
+3. **Metodo `generateShortCode`**:
+   - Definisce un set di caratteri (`0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ`).
+   - Genera un codice di lunghezza specificata scegliendo casualmente caratteri dal set di caratteri.
+   - Ritorna il codice generato.
+
+4. **Metodo `shortCodeExists`**:
+   - Controlla se il codice esiste già nel database utilizzando una query.
+   - Ritorna `true` se il codice esiste, altrimenti `false`.
+
+### Vantaggi dell'Algoritmo
+
+- **Semplicità**: L'algoritmo è semplice da implementare e comprendere.
+- **Efficienza**: Genera rapidamente codici unici, specialmente per piccole dimensioni di dataset.
+- **Flessibilità**: La lunghezza del codice può essere facilmente modificata per adattarsi a diverse esigenze.
+
+### Limiti dell'Algoritmo
+
+- **Collisioni**: Sebbene l'algoritmo gestisca le collisioni rigenerando il codice, la probabilità di collisioni aumenta con un numero molto elevato di URL.
+- **Sicurezza**: Il codice generato è casuale e non crittograficamente sicuro, quindi non dovrebbe essere utilizzato per applicazioni che richiedono sicurezza elevata.
+
+Questo algoritmo è ideale per un servizio di accorciamento URL semplice e di uso generale.
+
+Sì, è possibile utilizzare hash come MD5 o SHA-256 per generare codici brevi per gli URL. Tuttavia, questi hash producono stringhe molto lunghe, quindi è comune utilizzare solo una parte dell'hash per ottenere un codice breve. Questo approccio ha i suoi vantaggi, tra cui la riduzione delle probabilità di collisione rispetto a un semplice codice casuale.
+
+### Algoritmo Utilizzando Hash
+
+#### Passaggi dell'Algoritmo
+
+1. **Generazione dell'Hash**:
+   - Utilizziamo una funzione hash come MD5 o SHA-256 sull'URL lungo.
+   - Prendiamo solo una porzione dell'hash (ad esempio, i primi 6-8 caratteri) per ottenere il codice breve.
+
+2. **Verifica dell'Unicità**:
+   - Controlliamo se il codice breve esiste già nel database.
+   - Se esiste, aggiungiamo un contatore al URL lungo e rigeneriamo l'hash fino a trovare un codice unico.
+
+3. **Salvataggio nel Database**:
+   - Una volta generato un codice unico, salviamo il codice insieme all'URL lungo nel database.
+
+### Dettagli del Codice
+
+Ecco un esempio di come implementare questo algoritmo utilizzando MD5 in PHP:
+
+```php
+<?php
+
+namespace App\Models;
+
+use Leaf\Model;
+
+class Url extends Model
+{
+    protected $table = 'urls';
+
+    public static function createShortUrl($longUrl)
+    {
+        $shortCode = self::generateUniqueShortCode($longUrl);
+        self::insert([
+            'long_url' => $longUrl,
+            'short_code' => $shortCode,
+        ]);
+
+        return $shortCode;
+    }
+
+    public static function getLongUrl($shortCode)
+    {
+        $result = self::where('short_code', $shortCode)->first();
+        return $result ? $result['long_url'] : null;
+    }
+
+    private static function generateUniqueShortCode($longUrl)
+    {
+        $counter = 0;
+        do {
+            $shortCode = self::generateShortCode($longUrl, $counter);
+            $counter++;
+        } while (self::shortCodeExists($shortCode));
+
+        return $shortCode;
+    }
+
+    private static function generateShortCode($longUrl, $counter)
+    {
+        // Usa l'URL lungo e un contatore per generare un hash unico
+        $hash = md5($longUrl . $counter);
+        // Prendi solo i primi 6 caratteri dell'hash
+        return substr($hash, 0, 6);
+    }
+
+    private static function shortCodeExists($shortCode)
+    {
+        return self::where('short_code', $shortCode)->exists();
+    }
+}
+```
+
+### Passaggi dell'Algoritmo Dettagliati
+
+1. **Metodo `createShortUrl`**:
+   - Riceve l'URL lungo come parametro.
+   - Genera un codice breve unico utilizzando il metodo `generateUniqueShortCode`.
+   - Inserisce l'URL lungo e il codice breve nel database.
+   - Ritorna il codice breve.
+
+2. **Metodo `generateUniqueShortCode`**:
+   - Utilizza un ciclo `do-while` per generare e verificare l'unicità del codice.
+   - Chiama il metodo `generateShortCode` per creare un nuovo codice, aggiungendo un contatore al URL lungo.
+   - Verifica l'unicità del codice utilizzando il metodo `shortCodeExists`.
+   - Ripete il processo finché non viene trovato un codice unico.
+
+3. **Metodo `generateShortCode`**:
+   - Utilizza la funzione `md5` per generare un hash dell'URL lungo concatenato con un contatore.
+   - Prende solo i primi 6 caratteri dell'hash per ottenere il codice breve.
+   - Ritorna il codice generato.
+
+4. **Metodo `shortCodeExists`**:
+   - Controlla se il codice esiste già nel database utilizzando una query.
+   - Ritorna `true` se il codice esiste, altrimenti `false`.
+
+### Vantaggi dell'Utilizzo di Hash
+
+- **Riduzione delle Collisioni**: Gli hash hanno una distribuzione uniforme, riducendo la probabilità di collisioni rispetto ai codici casuali.
+- **Deterministico**: Lo stesso URL lungo con lo stesso contatore produrrà sempre lo stesso codice, il che può essere utile in alcuni scenari.
+
+### Limiti dell'Utilizzo di Hash
+
+- **Lunghezza del Codice**: Utilizzare solo una porzione dell'hash riduce l'unicità e potrebbe aumentare le collisioni se non si utilizza un contatore.
+- **Performance**: Generare un hash per ogni URL può essere meno efficiente rispetto alla generazione di codici casuali, specialmente per grandi volumi di URL.
+
+Utilizzare hash come MD5 o SHA-256 per creare URL corte è un approccio valido che può ridurre le collisioni rispetto ai codici casuali. Tuttavia, è importante gestire adeguatamente l'unicità e le performance, ad esempio utilizzando un contatore per gestire le collisioni.
